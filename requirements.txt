@@ -8,6 +8,8 @@ faiss-cpu
 altair
 tiktoken
 matplotlib
+docx2txt
+
 
 pycryptodome==3.15.0
 # uncomment to use huggingface llms
