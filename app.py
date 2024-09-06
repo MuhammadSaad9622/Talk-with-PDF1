@@ -12,6 +12,8 @@ from htmlTemplates import css, hide_st_style, footer
 import json
 import os
 from datetime import datetime, timedelta
+from fpdf import FPDF  # For creating PDF files
+import random  # For quiz question randomization
 
 # File to store recent responses
 RESPONSES_FILE = 'recent_responses.json'
@@ -38,6 +40,53 @@ def get_docx_text(docx_docs):
         if doc_text:
             text += doc_text
     return text
+
+def generate_quiz(questions, num_questions=10):
+    """Generate a quiz with multiple-choice questions."""
+    quiz_questions = random.sample(questions, min(len(questions), num_questions))
+    return quiz_questions
+
+def create_pdf(quiz_questions):
+    """Create a PDF file with the quiz questions."""
+    pdf = FPDF()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    pdf.add_page()
+
+    # Title
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(200, 10, txt="QUIZ", ln=True, align='C')
+
+    # Add questions
+    pdf.set_font("Arial", size=12)
+    for i, question in enumerate(quiz_questions, start=1):
+        pdf.ln(10)
+        pdf.multi_cell(0, 10, f"{i}. {question['question']}")
+        for idx, option in enumerate(question['options'], start=1):
+            pdf.multi_cell(0, 10, f"    {chr(64+idx)}. {option}")
+
+    # Save the PDF file
+    quiz_filename = "quiz.pdf"
+    pdf.output(quiz_filename)
+    return quiz_filename
+
+def load_questions(conversation_chain):
+    """Generate quiz questions from the document content."""
+    course_content1 = {}
+    response = conversation_chain({
+        'question': "Generate 20 multiple-choice quiz questions from the given content"
+    })
+    
+    course_content1 = response['chat_history'][-1].content
+    
+    return course_content1
+
+    
+    
+
+def link_google_form():
+    """Provide a feedback button linking to a Google Form."""
+    google_form_url = "https://forms.gle/fhc1JJPvzPCSqLfu7"  # Replace with your actual Google Form URL
+    st.markdown(f"[Provide Feedback]({google_form_url})", unsafe_allow_html=True)
 
 def get_text_chunks(text):
     """Split the extracted text into manageable chunks."""
@@ -75,18 +124,14 @@ def generate_course(conversation_chain):
     course_content = {}
 
     # Generate course modules and lessons
-    modules = ["Introduction", "Key points", " objectives","Conclusion",]
+    modules = ["Introduction", "Key points", "Objectives", "Conclusion"]
     for module in modules:
         response = conversation_chain({
-            'question': f"Generate a detailed {module} for a study course based on the given document and  add also sections where you think appropriate."
+            'question': f"Generate a detailed {module} for a study course based on the given document and add sections where you think appropriate."
         })
         course_content[module] = response['chat_history'][-1].content
 
-    # Generate practice questions and assessments
-    response = conversation_chain({
-        'question': " provide some links for practise tests and exams or refernece sites as well. "
-    })
-    course_content["Practice & Assessment"] = response['chat_history'][-1].content
+    
 
     file_name = "_".join(st.session_state.uploaded_file_names)  # Create a unique file name
     save_recent_responses(course_content, file_name)
@@ -111,6 +156,20 @@ def display_course(course_content):
     for section, content in course_content.items():
         st.subheader(section)
         st.write(content)
+        
+def display_course1(course_content):
+    """Display the generated Quiz content on the Streamlit app."""
+    st.header("Generated Quiz from Documents")
+    if course_content is None:
+        st.write("No content available.")
+        return
+    
+    if not isinstance(course_content, (list, tuple)):
+        st.write("Content should be a list or tuple.")
+        return
+
+    for content in course_content:
+        st.write(content)       
 
 def save_recent_responses(course_content, file_name):
     """Save recent responses to a file with the file name as key."""
@@ -164,7 +223,7 @@ def delete_recent_response(response_title):
 
 def main():
     load_dotenv()
-    st.set_page_config(page_title="Generate Course from Documents", page_icon="icon.png", layout="wide")
+    st.set_page_config(page_title="Generate Course & Quiz from Documents", page_icon="icon.png", layout="wide")
     st.write(css, unsafe_allow_html=True)
 
     if "conversation" not in st.session_state:
@@ -187,77 +246,75 @@ def main():
             type=['pdf', 'docx']
         )
 
-        if doc_files:
-            st.session_state.uploaded_file_names = [doc.name for doc in doc_files]
+        st.subheader("Actions")
+        
+        # Generate Quiz Button
+        
 
+        # Provide Feedback Button
+        link_google_form()
+
+        # Display Recent Responses
         st.subheader("Recent Responses")
         recent_responses = load_recent_responses()
-
-        with st.expander("View Recent Responses", expanded=True):
-            if recent_responses:
-                for response_title in recent_responses.keys():
-                    col1, col2 = st.columns([4, 1])
-                    with col1:
-                        if st.button(response_title, key=f"select_{response_title}"):
-                            st.session_state.selected_response = response_title
-                    with col2:
-                        if st.button("X", key=f"delete_{response_title}"):
-                            delete_recent_response(response_title)
-                            st.session_state.selected_response = None
-                            st.experimental_rerun()  # Rerun to refresh the list
-
-            else:
-                st.info("No recent course content available.")
-
-        if st.button("Process"):
-            if st.session_state.selected_response:
-                st.error("A recent response is selected. Please deselect it to process new documents.")
-            elif not doc_files:
-                st.error("Please upload at least one document.")
-            else:
-                with st.spinner("Processing..."):
-                    raw_text = ""
-                    pdf_docs = [doc for doc in doc_files if doc.type == "application/pdf"]
-                    docx_docs = [doc for doc in doc_files if doc.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
-
-                    if pdf_docs:
-                        raw_text += get_pdf_text(pdf_docs)
-                    if docx_docs:
-                        raw_text += get_docx_text(docx_docs)
-
-                    text_chunks = get_text_chunks(raw_text)
-                    
-                    if text_chunks:
-                        vectorstore = get_vectorstore(text_chunks)
-                        if vectorstore is not None:
-                            st.session_state.conversation = get_conversation_chain(vectorstore)
-                            st.success("Your data has been processed successfully!")
-                        else:
-                            st.error("No valid text found in the uploaded documents.")
-                    else:
-                        st.error("No valid text found in the uploaded documents.")
-            progress.empty()
-
-        if st.button("Clear Selection"):
-            st.session_state.selected_response = None
-
-    if st.session_state.selected_response:
-        selected_response = st.session_state.selected_response
-        recent_responses = load_recent_responses()
-        if selected_response in recent_responses:
-            st.header(f"Full Content for {selected_response}")
-            course_content = recent_responses[selected_response].get('course_content', {})
-            display_course(course_content)
+        if recent_responses:
+            response_titles = list(recent_responses.keys())
+            selected_response = st.selectbox("Select a recent response:", response_titles)
+            if st.button("Load Response"):
+                st.session_state.selected_response = selected_response
+            if st.button("Delete Response"):
+                delete_recent_response(selected_response)
         else:
-            st.error("Selected response not available.")
-    elif st.session_state.conversation:
-        with st.spinner("Generating course content..."):
-            file_name = "_".join(st.session_state.uploaded_file_names)
-            course_content = generate_course(st.session_state.conversation)
-            display_course(course_content)
+            st.write("No recent responses within the last 24 hours.")
+
+    if doc_files:
+        with st.spinner("Processing documents..."):
+            raw_text = ""
+            pdf_docs = [doc for doc in doc_files if doc.type == "application/pdf"]
+            docx_docs = [doc for doc in doc_files if doc.type == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+            
+            if pdf_docs:
+                raw_text += get_pdf_text(pdf_docs)
+            if docx_docs:
+                raw_text += get_docx_text(docx_docs)
+
+            text_chunks = get_text_chunks(raw_text)
+
+            vectorstore = get_vectorstore(text_chunks)
+            if vectorstore:
+                st.session_state.conversation = get_conversation_chain(vectorstore)
+            else:
+                st.warning("No content to create a vectorstore from.")
+        
+        st.session_state.uploaded_file_names = [doc.name for doc in doc_files]
+
+        if st.session_state.conversation:
+            # Generate Course Button
+            if st.button("Generate Course"):
+                with st.spinner("Generating course content..."):
+                    course_content = generate_course(st.session_state.conversation)
+                    display_course(course_content)
+            
+            # Summarize Button
+            if st.button("Summarize Content"):
+                with st.spinner("Summarizing..."):
+                    summary = summarize_content(text_chunks)
+                    st.subheader("Summary")
+                    st.write(summary)
+            
+            if st.button("Create Quiz"):
+                with st.spinner("Generating quiz..."):
+                    questions = load_questions(st.session_state.conversation)
+                    st.subheader("Quiz Generated From the Course")
+                    st.write(questions)
+            
+    # Load Selected Response
+    if st.session_state.selected_response:
+        response_data = recent_responses.get(st.session_state.selected_response)
+        if response_data:
+            display_course(response_data['course_content'])
     
-    st.markdown(hide_st_style, unsafe_allow_html=True)
-    st.markdown(footer, unsafe_allow_html=True)
+    st.write(footer, unsafe_allow_html=True)
 
 if __name__ == '__main__':
     main()
