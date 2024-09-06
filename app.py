@@ -246,7 +246,7 @@ def main():
             type=['pdf', 'docx']
         )
 
-        st.subheader("Actions")
+        st.subheader("Recomendation")
         
         # Generate Quiz Button
         
