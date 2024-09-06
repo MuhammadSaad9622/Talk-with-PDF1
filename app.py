@@ -73,7 +73,7 @@ def load_questions(conversation_chain):
     """Generate quiz questions from the document content."""
     course_content1 = {}
     response = conversation_chain({
-        'question': "Generate 20 multiple-choice quiz questions from the given content"
+        'question': "Generate 10 multiple-choice quiz questions from the given content"
     })
     
     course_content1 = response['chat_history'][-1].content
