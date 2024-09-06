@@ -72,24 +72,9 @@ Contributions are welcome! Please follow these steps to contribute to the projec
 4. Push your changes to your fork 🚀
 5. Create a pull request to the main repository 📥
 
-## 🔥 Show some support | Donation
 
-If you find this repository helpful, show your support by giving it a 🌟! Your support means a lot to me and helps me keep contributing to the open-source community.
 
-Also, if you'd like to support me financially, you can do so via my donation link: [https://go.yesbhautik.co.in/8i6wdu](https://go.yesbhautik.co.in/8i6wdu)
-<br><br>
-<a href="https://go.yesbhautik.co.in/8i6wdu">
-  <img src="https://www.pngall.com/wp-content/uploads/2016/05/PayPal-Donate-Button-Free-Download-PNG.png" alt="Donate" width="100">
-</a>
 
-## 💬 Let's Connect
-
-Feel free to reach out to us if you have questions, ideas, or simply want to chat. We're here to help and connect with the community.
-
-- Website: [https://yesbhautik.co.in/](https://yesbhautik.co.in/)
-- Another One: [https://yesbhautikx.co.in/](https://yesbhautikx.co.in/)
-- LinkedIn profile: [https://www.linkedin.com/in/yesbhautik](https://www.linkedin.com/in/yesbhautik)
-- Instagram page: [https://www.instagram.com/yesbhautik](https://www.instagram.com/yesbhautik)
 
 ## 📜 License
 
